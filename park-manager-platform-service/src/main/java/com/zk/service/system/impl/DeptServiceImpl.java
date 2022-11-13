@@ -2,6 +2,7 @@ package com.zk.service.system.impl;
 
 import com.zk.common.constant.SysConstants;
 import com.zk.common.domain.system.Dept;
+import com.zk.common.domain.system.Park;
 import com.zk.common.domain.system.RoleDept;
 import com.zk.common.vo.DeptListVo;
 import com.zk.db.system.DeptRepository;
@@ -44,9 +45,11 @@ public class DeptServiceImpl implements DeptService {
 
 
         //查询对应的园区的信息
-        parkRepository.findByParkIdAndParkStatusAndDeletedStatus(parkId,SysConstants.NODE_STATUS_ZERO,SysConstants.DELETE_STATUS_ZERO).orElseThrow(() ->{
+        Park park = parkRepository.findByParkIdAndParkStatusAndDeletedStatus(parkId, SysConstants.NODE_STATUS_ZERO, SysConstants.DELETE_STATUS_ZERO).orElseThrow(() -> {
             throw new RuntimeException("未找到当前园区的信息");
         });
+
+//        this.deptRepository
 
 
         //构建园区根节点信息
