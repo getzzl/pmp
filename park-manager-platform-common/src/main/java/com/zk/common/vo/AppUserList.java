@@ -15,7 +15,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class UserList {
+public class AppUserList {
 
     private Integer userId;
 
@@ -23,16 +23,7 @@ public class UserList {
 
     private String phone;
 
-    private List<UserListRoleVo> userRoles;
+    private Integer identityStatus;
 
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    public static class UserListRoleVo {
-        private Integer roleId;
-
-        private String roleName;
-    }
 }

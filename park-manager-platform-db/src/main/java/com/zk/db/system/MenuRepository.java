@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * @Author: zzl
@@ -16,7 +17,7 @@ import java.util.Optional;
 public interface MenuRepository extends JpaRepository<Menu, Integer>, JpaSpecificationExecutor<Menu> {
 
 
-    List<Menu> findByMenuIdInAndDeletedStatus(List<Integer> menuIds, Integer deletedStatus);
+    List<Menu> findByMenuIdInAndDeletedStatus(Set<Integer> menuIds, Integer deletedStatus);
 
     List<Menu> findByIdsLike(String ids);
 

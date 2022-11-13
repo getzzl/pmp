@@ -13,10 +13,22 @@ import java.util.List;
  * @Date: 2022/11/9 0009
  */
 @Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class DeptListVo extends DeptListBaseVo {
 
-    private List<DeptListVo> child;
+public class DeptListBaseVo {
+
+    private Integer deptId;
+
+    private String deptName;
+
+    private Integer deptPartId;
+
+    private String deptParentName;
+
+    private Date createTime;
+
+    private Date updateTime;
 
 }

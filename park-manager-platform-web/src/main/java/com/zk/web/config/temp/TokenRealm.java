@@ -41,7 +41,7 @@ public class TokenRealm extends AuthorizingRealm {
             return null;
         }
         Optional<Object> session = this.sessionConfig.getSession(token);
-        if (!session.isPresent()) {
+        if (session.isEmpty()) {
             return null;
         }
         User user = (User) session.get();

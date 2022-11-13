@@ -2,6 +2,7 @@ package com.zk.service.system;
 
 import com.zk.common.domain.system.Role;
 import com.zk.common.vo.DeptRoleList;
+import com.zk.common.vo.RoleInfoVo;
 import com.zk.common.vo.RoleVo;
 import org.springframework.data.domain.Page;
 
@@ -20,7 +21,7 @@ public interface RoleService {
 
     void deleteRole(Integer roleId);
 
-    Object getMenuList(Integer roleId);
+    RoleInfoVo getMenuList(Integer roleId);
 
     Object getDataTypeWithRole(Integer roleId);
 

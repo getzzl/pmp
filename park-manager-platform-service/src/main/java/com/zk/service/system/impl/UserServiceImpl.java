@@ -5,10 +5,7 @@ import com.zk.common.constant.SysConstants;
 import com.zk.common.domain.system.*;
 import com.zk.common.dto.UserDto;
 import com.zk.common.util.EncryptUtils;
-import com.zk.common.vo.UserEditInfo;
-import com.zk.common.vo.UserInfo;
-import com.zk.common.vo.UserList;
-import com.zk.common.vo.UserPasswordVo;
+import com.zk.common.vo.*;
 import com.zk.db.system.*;
 import com.zk.service.system.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -24,10 +21,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import javax.persistence.criteria.Predicate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -62,12 +56,12 @@ public class UserServiceImpl implements UserService {
     private RedisTemplate<String, Object> redisTemplate;
 
     @Override
-    public Optional<User> getByUserName(String userName) {
-        return userRepository.findByUserName(userName);
+    public Optional<User> getByUserName(String userName, Integer deletedStatus) {
+        return userRepository.findByUserNameAndDeletedStatus(userName, deletedStatus);
     }
 
     @Override
-    public Page<UserList> findAll(Integer page, Integer size, String nickName, Integer deptId) {
+    public Page<ManagerUserList> findAll(Integer page, Integer size, String nickName, Integer deptId) {
         return null;
     }
 
@@ -145,7 +139,7 @@ public class UserServiceImpl implements UserService {
                     }
 
                     //每一个角色
-                    List<Integer> menuIds = roleMenuRepository.findByRoleId(e.getRoleId()).stream().map(RoleMenu::getMenuId).collect(Collectors.toList());
+                    Set<Integer> menuIds = roleMenuRepository.findByRoleIdAndDeletedStatus(e.getRoleId(), SysConstants.DELETE_STATUS_ZERO).stream().map(RoleMenu::getMenuId).collect(Collectors.toSet());
                     if (CollectionUtils.isEmpty(menuIds)) {
                         log.info(" 该角色暂时没有对应的菜单权限 roleId:{}", e.getRoleId());
                         userRoleDto.setRoleMenuDtos(new ArrayList<>());
@@ -160,6 +154,7 @@ public class UserServiceImpl implements UserService {
                                 roleMenuDto.setMenuCode(menu.getMenuCode());
                                 roleMenuDto.setMenuName(menu.getMenuName());
                                 roleMenuDto.setMenuId(menu.getMenuId());
+                                roleMenuDto.setIsManagerMenu(menu.getIsManagerMenu());
                                 return roleMenuDto;
                             }).collect(Collectors.toList()));
                         }
@@ -180,40 +175,69 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Page<UserList> findAllManagerUser(Integer page, Integer size, String keyword) {
-        final String finalKeyword = keyword;
+    public Page<ManagerUserList> findAllManagerUser(Integer page, Integer size, String keyword) {
+
         Page<User> usersPage = this.userRepository.findAll((root, query, build) -> {
             ArrayList<Predicate> arrayList = new ArrayList<>();
 
-            if (!StringUtils.isEmpty(finalKeyword)) {
+            if (!StringUtils.isEmpty(keyword)) {
                 //构建条件 like --or
-                arrayList.add(build.equal(root.get("phone"), finalKeyword));
+                arrayList.add(build.equal(root.get("phone"), keyword));
             }
 
             Predicate[] predicates = new Predicate[arrayList.size()];
             return build.and(arrayList.toArray(predicates));
         }, PageRequest.of(page == null || page - 1 < 0 ? 0 : page - 1, size == null ? 20 : size, Sort.by(Sort.Direction.DESC, "createTime")));
 
-        List<UserList> result = new ArrayList<>();
+        List<ManagerUserList> result = new ArrayList<>();
         if (!CollectionUtils.isEmpty(usersPage.getContent())) {
             result = usersPage.getContent().stream().map(user -> {
-                UserList userList = new UserList();
-                BeanUtils.copyProperties(user, userList);
+                ManagerUserList managerUserList = new ManagerUserList();
+                BeanUtils.copyProperties(user, managerUserList);
 
                 //设置角色关系
                 List<UserRole> userRoles = userRoleRepository.findByUserIdAndDeletedStatus(user.getUserId(), SysConstants.DELETE_STATUS_ZERO);
-                userList.setUserRoles(CollectionUtils.isEmpty(userRoles) ? new ArrayList<>() : userRoles.stream().map(e -> UserList.UserListRoleVo.builder().roleId(e.getRoleId()).roleName(roleRepository.findById(e.getRoleId()).get().getRoleName()).build()).collect(Collectors.toList()));
+                managerUserList.setUserRoles(CollectionUtils.isEmpty(userRoles) ? new ArrayList<>() : userRoles.stream().map(e -> ManagerUserList.UserListRoleVo.builder().roleId(e.getRoleId()).roleName(roleRepository.findById(e.getRoleId()).get().getRoleName()).build()).collect(Collectors.toList()));
 
-                return userList;
+                return managerUserList;
             }).collect(Collectors.toList());
         }
         return new PageImpl<>(result, usersPage.getPageable(), usersPage.getTotalElements());
     }
 
     @Override
-    public Page<UserList> findAllAppUser(Integer page, Integer size, String keyword) {
-        //todo
-        return null;
+    public Page<AppUserList> findAllAppUser(Integer page, Integer size, String userName, String phone, Integer identityStatus) {
+        Page<AppUser> usersPage = this.appUserRepository.findAll((root, query, build) -> {
+            ArrayList<Predicate> arrayList = new ArrayList<>();
+
+            if (!StringUtils.isEmpty(phone)) {
+                //构建条件 like --or
+                arrayList.add(build.equal(root.get("phone"), phone));
+            }
+
+            if (identityStatus != null) {
+                //构建条件 like --or
+                arrayList.add(build.equal(root.get("identityStatus"), identityStatus));
+            }
+
+            if (!StringUtils.isEmpty(userName)) {
+                //构建条件 like --or
+                arrayList.add(build.like(root.get("userName"), "%" + userName + "%"));
+            }
+
+            Predicate[] predicates = new Predicate[arrayList.size()];
+            return build.and(arrayList.toArray(predicates));
+        }, PageRequest.of(page == null || page - 1 < 0 ? 0 : page - 1, size == null ? 20 : size, Sort.by(Sort.Direction.DESC, "createTime")));
+
+        List<AppUserList> result = new ArrayList<>();
+        if (!CollectionUtils.isEmpty(usersPage.getContent())) {
+            result = usersPage.getContent().stream().map(user -> {
+                AppUserList appUserList = new AppUserList();
+                BeanUtils.copyProperties(user, appUserList);
+                return appUserList;
+            }).collect(Collectors.toList());
+        }
+        return new PageImpl<>(result, usersPage.getPageable(), usersPage.getTotalElements());
     }
 
     @Override
@@ -285,7 +309,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void deleteManagerUser(Integer userId) {
 
-        userRepository.findByUserIdAndDeletedStatus(userId,SysConstants.DELETE_STATUS_ZERO).ifPresent(user -> {
+        userRepository.findByUserIdAndDeletedStatus(userId, SysConstants.DELETE_STATUS_ZERO).ifPresent(user -> {
             user.setDeletedStatus(SysConstants.DELETE_STATUS_ONE);
             userRepository.save(user);
             List<UserRole> userRoles = userRoleRepository.findByUserIdAndDeletedStatus(userId, SysConstants.DELETE_STATUS_ZERO);
@@ -302,7 +326,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void deleteAppUser(Integer appUserId) {
-        appUserRepository.findByAppUserIdAndDeletedStatus(appUserId,SysConstants.DELETE_STATUS_ZERO).ifPresent(user -> {
+        appUserRepository.findByAppUserIdAndDeletedStatus(appUserId, SysConstants.DELETE_STATUS_ZERO).ifPresent(user -> {
             user.setDeletedStatus(SysConstants.DELETE_STATUS_ONE);
             appUserRepository.save(user);
 

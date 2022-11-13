@@ -26,6 +26,8 @@ public class Park {
 
     private Integer deletedStatus;
 
+    private String parkName;
+
     private Date createTime;
 
     private Date updateTime;

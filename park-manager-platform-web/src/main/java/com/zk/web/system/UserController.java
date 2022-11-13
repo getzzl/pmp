@@ -32,20 +32,20 @@ public class UserController {
 
     @LogOperation(opType = LogConstant.OPTYPE.SEARCH_LOG, summary = "分页查找后台用户列表", method = MediaType.APPLICATION_JSON_VALUE)
     @GetMapping("/getManagerUserList")
-    public ResultVo<Page<UserList>> findAllManagerUser() {
+    public ResultVo<Page<ManagerUserList>> findAllManagerUser() {
         PageVo page = PageUtil.getPage();
         return ResultVo.success(this.userService.findAllManagerUser(page.getPage(), page.getSize(),page.getKeyword()));
     }
 
     @LogOperation(opType = LogConstant.OPTYPE.SEARCH_LOG, summary = "分页查找app用户列表", method = MediaType.APPLICATION_JSON_VALUE)
     @GetMapping("/getAppUserList")
-    public ResultVo<Page<UserList>> findAllAppUser() {
+    public ResultVo<Page<AppUserList>> findAllAppUser(String userName,String phone,Integer identityStatus) {
         PageVo page = PageUtil.getPage();
-        return ResultVo.success(this.userService.findAllAppUser(page.getPage(), page.getSize(),page.getKeyword()));
+        return ResultVo.success(this.userService.findAllAppUser(page.getPage(), page.getSize(),userName,phone,identityStatus));
     }
 
 
-    @LogOperation(opType = LogConstant.OPTYPE.CREATE_LOG, summary = "添加/修改用户(用户id是否为null区别)", method = MediaType.APPLICATION_JSON_VALUE)
+    @LogOperation(opType = LogConstant.OPTYPE.CREATE_LOG, summary = "添加/修改后台管理用户(用户id是否为null区别)", method = MediaType.APPLICATION_JSON_VALUE)
     @PostMapping("/editManagerUser")
     public ResultVo<Void> editUser(@RequestBody UserEditInfo user) {
         User save = userService.editUser(user);
@@ -80,16 +80,6 @@ public class UserController {
         return ResultVo.success(this.userService.findAllUser());
     }
 
-
-
-//
-//    @Operation(summary = "修改用户密码", method = MediaType.APPLICATION_JSON_VALUE)
-//    @PostMapping("/updatePassword")
-//    public ResultVo<Void> updatePassword(@RequestBody UserPasswordVo userPasswordVo) {
-//        log.info("[修改密码：] userPasswordVo: [{}]", userPasswordVo);
-//        this.userService.updatePassword(userPasswordVo);
-//        return ResultVo.success();
-//    }
 
     @LogOperation(opType = LogConstant.OPTYPE.DELETE_LOG, summary = "删除管理用户", method = MediaType.APPLICATION_JSON_VALUE)
     @DeleteMapping("/deleteManagerUser/{userId}")

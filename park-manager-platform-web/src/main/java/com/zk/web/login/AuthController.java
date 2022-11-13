@@ -35,13 +35,9 @@ public class AuthController {
         log.info("----- 登录请求 -----" + userName);
 
 
-        Optional<User> user = this.userService.getByUserName(userName);
-        User data = user.orElseThrow(() -> new RuntimeException());
+        Optional<User> user = this.userService.getByUserName(userName,SysConstants.DELETE_STATUS_ZERO);
+        User data = user.orElseThrow(() -> new RuntimeException("未找到对应的用户信息"));
 
-        //判断是否删除
-        if (SysConstants.DELETE_STATUS_ONE.equals(data.getDeletedStatus())) {
-            throw new RuntimeException("用户不存在");
-        }
 
         if (!data.getPassword().equals(EncryptUtils.md5(password))) {
             log.error("Login: " + userName + "; message: 用户名或密码错误");

@@ -4,17 +4,29 @@ import com.zk.common.constant.SysConstants;
 import com.zk.common.domain.system.Dept;
 import com.zk.common.domain.system.Park;
 import com.zk.common.domain.system.RoleDept;
+import com.zk.common.vo.DeptListBaseVo;
 import com.zk.common.vo.DeptListVo;
 import com.zk.db.system.DeptRepository;
 import com.zk.db.system.ParkRepository;
 import com.zk.db.system.RoleDeptRepository;
 import com.zk.service.system.DeptService;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
+import javax.persistence.criteria.Predicate;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @Author: zzl
@@ -42,24 +54,53 @@ public class DeptServiceImpl implements DeptService {
     public List<DeptListVo> getDeptList(Integer parkId) {
 
 
-
-
         //查询对应的园区的信息
         Park park = parkRepository.findByParkIdAndParkStatusAndDeletedStatus(parkId, SysConstants.NODE_STATUS_ZERO, SysConstants.DELETE_STATUS_ZERO).orElseThrow(() -> {
             throw new RuntimeException("未找到当前园区的信息");
         });
 
-//        this.deptRepository
+        //构建父节点
+        DeptListVo deptListVo = new DeptListVo();
+        deptListVo.setDeptName(park.getParkName());
+        deptListVo.setDeptId(park.getParkId());
 
 
-        //构建园区根节点信息
+        List<Dept> deptList = this.deptRepository.findByParkIdAndDeletedStatus(parkId, SysConstants.DELETE_STATUS_ZERO);
 
-        //递归查询所有的子节点的信息
+        //递归查询子节点
+        List<DeptListVo> childByParent = getChildByParent(deptList, park.getParkName());
+
+        deptListVo.setChild(childByParent);
 
 
+        return Collections.singletonList(deptListVo);
+    }
 
 
-        return null;
+    private List<DeptListVo> getChildByParent(List<Dept> deptList, String parentName) {
+
+
+        if (CollectionUtils.isEmpty(deptList)) {
+            return Collections.emptyList();
+        }
+
+
+        return deptList.stream().map(e -> {
+
+            DeptListVo deptListVo = new DeptListVo();
+
+            BeanUtils.copyProperties(e, deptListVo);
+
+            List<Dept> deptInners = this.deptRepository.findByDeptParentIdAndDeletedStatus(e.getDeptId(), SysConstants.DELETE_STATUS_ZERO);
+
+            deptListVo.setDeptParentName(parentName);
+
+            deptListVo.setChild(getChildByParent(deptInners, e.getDeptName()));
+
+            return deptListVo;
+
+        }).collect(Collectors.toList());
+
     }
 
 
@@ -107,21 +148,66 @@ public class DeptServiceImpl implements DeptService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteDept(Integer deptId) {
 
 
-        List<Dept> allDeptList = this.deptRepository.findByIdsLike("%" + deptId + "%");
+        Dept dept = this.deptRepository.findByDeptIdAndDeletedStatus(deptId, SysConstants.DELETE_STATUS_ZERO).orElseThrow(() -> new RuntimeException("该节点不存在，或者已被删除"));
+
+
+        dept.setDeletedStatus(SysConstants.DELETE_STATUS_ONE);
+
+
+        List<Dept> allDeptList = this.deptRepository.findByIdsLike(dept.getIds() + "%");
+
+        //check role
         allDeptList.forEach(e -> {
             List<RoleDept> roleList = this.roleDeptRepository.findByDeptIdAndDeletedStatus(e.getDeptId(), SysConstants.DELETE_STATUS_ZERO);
             if (!CollectionUtils.isEmpty(roleList)) {
                 throw new RuntimeException(String.format("部门: %s  下绑定的有角色，请先清除角色", e.getDeptName()));
             }
         });
-        //todo 这里要使用逻辑删除
-        this.deptRepository.deleteAll(allDeptList);
+
+        this.deptRepository.saveAll(allDeptList.stream().peek(e -> e.setDeletedStatus(SysConstants.DELETE_STATUS_ONE)).collect(Collectors.toList()));
 
 
+    }
 
+    @Override
+    public Page<DeptListBaseVo> getDeptListBySearch(String keyword, Integer page, Integer size) {
+
+        final String finalKeyword = keyword;
+        Page<Dept> deptList = this.deptRepository.findAll((root, query, build) -> {
+            ArrayList<Predicate> arrayList = new ArrayList<>();
+
+            if (!StringUtils.isEmpty(finalKeyword)) {
+                //构建条件 like --or
+                arrayList.add(build.like(root.get("deptName"), "%" + keyword + "%"));
+            }
+            arrayList.add(build.equal(root.get("deletedStatus"), SysConstants.DELETE_STATUS_ZERO));
+
+            Predicate[] predicates = new Predicate[arrayList.size()];
+            return build.and(arrayList.toArray(predicates));
+        }, PageRequest.of(page == null || page - 1 < 0 ? 0 : page - 1, size == null ? 20 : size, Sort.by(Sort.Direction.DESC, "createTime")));
+        List<DeptListBaseVo> result = new ArrayList<>();
+        if (!CollectionUtils.isEmpty(deptList.getContent())) {
+            result = deptList.getContent().stream().map(menu -> {
+                DeptListBaseVo deptListBaseVo = new DeptListBaseVo();
+                BeanUtils.copyProperties(menu, deptListBaseVo);
+                if (menu.getDeptParentId().equals(menu.getParkId())) {
+                    //说明上级园区
+                    this.parkRepository.findByParkIdAndParkStatusAndDeletedStatus(menu.getParkId(), SysConstants.NODE_STATUS_ZERO, SysConstants.DELETE_STATUS_ZERO).ifPresent(park -> {
+                        deptListBaseVo.setDeptParentName(park.getParkName());
+                    });
+                } else {
+                    this.deptRepository.findByDeptIdAndDeletedStatus(deptListBaseVo.getDeptId(), SysConstants.DELETE_STATUS_ZERO).ifPresent(dept -> {
+                        deptListBaseVo.setDeptParentName(dept.getDeptName());
+                    });
+                }
+                return deptListBaseVo;
+            }).collect(Collectors.toList());
+        }
+        return new PageImpl<>(result, deptList.getPageable(), deptList.getTotalElements());
     }
 
 

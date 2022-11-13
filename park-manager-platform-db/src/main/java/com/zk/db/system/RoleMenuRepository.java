@@ -15,5 +15,5 @@ import java.util.List;
 public interface RoleMenuRepository extends JpaRepository<RoleMenu,Integer> {
 
 
-    List<RoleMenu> findByRoleId(Integer userId);
+    List<RoleMenu> findByRoleIdAndDeletedStatus(Integer userId,Integer deletedStatus);
 }

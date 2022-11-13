@@ -46,5 +46,7 @@ public class UserDto {
         private String menuName;
 
         private String menuCode;
+
+        private Integer isManagerMenu;
     }
 }

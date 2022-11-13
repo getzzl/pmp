@@ -1,5 +1,6 @@
 package com.zk.service.login.impl;
 
+import com.zk.common.constant.SysConstants;
 import com.zk.common.domain.system.User;
 import com.zk.db.system.UserRepository;
 import com.zk.service.login.LoginService;
@@ -26,6 +27,6 @@ public class LoginServiceImpl implements LoginService {
 
     @Override
     public User queryUser(String userName) {
-        return userRepository.findByUserName(userName).orElse(null);
+        return userRepository.findByUserNameAndDeletedStatus(userName, SysConstants.DELETE_STATUS_ZERO).orElse(null);
     }
 }

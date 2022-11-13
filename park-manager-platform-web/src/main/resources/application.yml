@@ -36,7 +36,7 @@ logging:
 app:
   auth:
     key-of-auth: authorized
-    expire: 1000
+    expire: 1440
 
 springdoc:
   swagger-ui:

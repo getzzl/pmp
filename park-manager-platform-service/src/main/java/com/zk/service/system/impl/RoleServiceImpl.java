@@ -1,17 +1,16 @@
 package com.zk.service.system.impl;
 
 import com.alibaba.fastjson.JSONObject;
+import com.zk.common.constant.MenuIsManagerTypeEnum;
 import com.zk.common.constant.SysConstants;
 import com.zk.common.domain.system.Dept;
 import com.zk.common.domain.system.Role;
 import com.zk.common.domain.system.RoleMenu;
 import com.zk.common.domain.system.UserRole;
 import com.zk.common.vo.DeptRoleList;
+import com.zk.common.vo.RoleInfoVo;
 import com.zk.common.vo.RoleVo;
-import com.zk.db.system.DeptRepository;
-import com.zk.db.system.RoleMenuRepository;
-import com.zk.db.system.RoleRepository;
-import com.zk.db.system.UserRoleRepository;
+import com.zk.db.system.*;
 import com.zk.service.system.RoleService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -25,10 +24,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import javax.persistence.criteria.Predicate;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -47,7 +43,10 @@ public class RoleServiceImpl implements RoleService {
     private DeptRepository deptRepository;
 
     @Autowired
-    private RoleMenuRepository menuRepository;
+    private RoleMenuRepository roleMenuRepository;
+
+    @Autowired
+    private MenuRepository menuRepository;
 
     @Autowired
     private UserRoleRepository userRoleRepository;
@@ -77,19 +76,13 @@ public class RoleServiceImpl implements RoleService {
         Integer roleIdInsert = roleVO.getRoleId();
 
 
-        List<Integer> appMenuIds = getMenuTreeIds(roleVO.getAppMenuIds(),new ArrayList<>());
+        Set<Integer> appMenuIds = getMenuTreeIds(roleVO.getAppMenuIds(), new HashSet<>());
         log.info("appMenuIds:{}", JSONObject.toJSON(appMenuIds));
-        List<Integer> managerMenuIds = getMenuTreeIds( roleVO.getManagerMenuIds(),new ArrayList<>());
+        Set<Integer> managerMenuIds = getMenuTreeIds(roleVO.getManagerMenuIds(), new HashSet<>());
 
         if (roleId == null) {
             //add role
-            Role role = Role.builder()
-                    .deletedStatus(SysConstants.DELETE_STATUS_ZERO)
-                    .roleName(roleVO.getRoleName())
-                    .deptId(deptId)
-                    .createTime(new Date())
-                    .updateTime(new Date())
-                    .build();
+            Role role = Role.builder().deletedStatus(SysConstants.DELETE_STATUS_ZERO).roleName(roleVO.getRoleName()).deptId(deptId).createTime(new Date()).updateTime(new Date()).build();
 
             Role saveRole = roleRepository.save(role);
             roleIdInsert = saveRole.getRoleId();
@@ -127,33 +120,19 @@ public class RoleServiceImpl implements RoleService {
         //app insert menu-role
         if (!CollectionUtils.isEmpty(appMenuIds)) {
             List<RoleMenu> roleMenus = appMenuIds.stream().map(e -> {
-                return RoleMenu.builder()
-                        .roleId(userRoleId)
-                        .deletedStatus(SysConstants.DELETE_STATUS_ZERO)
-                        .menuId(e)
-                        .isManagerMenu(SysConstants.IS_MANAGER_MENU_ZERO)
-                        .createTime(new Date())
-                        .updateTime(new Date())
-                        .build();
+                return RoleMenu.builder().roleId(userRoleId).deletedStatus(SysConstants.DELETE_STATUS_ZERO).menuId(e).isManagerMenu(SysConstants.IS_MANAGER_MENU_ZERO).createTime(new Date()).updateTime(new Date()).build();
             }).collect(Collectors.toList());
 
-            this.menuRepository.saveAll(roleMenus);
+            this.roleMenuRepository.saveAll(roleMenus);
         }
 
         //manager insert menu-role
         if (!CollectionUtils.isEmpty(managerMenuIds)) {
             List<RoleMenu> managerMenus = appMenuIds.stream().map(e -> {
-                return RoleMenu.builder()
-                        .roleId(userRoleId)
-                        .deletedStatus(SysConstants.DELETE_STATUS_ZERO)
-                        .menuId(e)
-                        .isManagerMenu(SysConstants.IS_MANAGER_MENU_ONE)
-                        .createTime(new Date())
-                        .updateTime(new Date())
-                        .build();
+                return RoleMenu.builder().roleId(userRoleId).deletedStatus(SysConstants.DELETE_STATUS_ZERO).menuId(e).isManagerMenu(SysConstants.IS_MANAGER_MENU_ONE).createTime(new Date()).updateTime(new Date()).build();
             }).collect(Collectors.toList());
 
-            this.menuRepository.saveAll(managerMenus);
+            this.roleMenuRepository.saveAll(managerMenus);
         }
 
     }
@@ -173,13 +152,13 @@ public class RoleServiceImpl implements RoleService {
     }
 
 
-    private List<Integer> getMenuTreeIds(List<RoleVo.AppMenuIds> appMenuIds,List<Integer> result) {
+    private Set<Integer> getMenuTreeIds(List<RoleVo.AppMenuIds> appMenuIds, Set<Integer> result) {
         if (CollectionUtils.isEmpty(appMenuIds)) {
             return result;
         }
         appMenuIds.forEach(e -> {
-           result.add(e.getMenuId());
-           getMenuTreeIds(e.getChild(),result);
+            result.add(e.getMenuId());
+            getMenuTreeIds(e.getChild(), result);
 
         });
         return result;
@@ -187,8 +166,37 @@ public class RoleServiceImpl implements RoleService {
 
 
     @Override
-    public Object getMenuList(Integer roleId) {
-        return null;
+    public RoleInfoVo getMenuList(Integer roleId) {
+
+        Role roleExist = this.roleRepository.findByRoleIdAndDeletedStatus(roleId, SysConstants.DELETE_STATUS_ZERO).orElseThrow(() -> new RuntimeException("未找到对应的角色,或者该角色已被删除"));
+
+
+        Dept dept = this.deptRepository.findByDeptIdAndDeletedStatus(roleExist.getDeptId(), SysConstants.DELETE_STATUS_ZERO).orElseThrow(() -> new RuntimeException("该角色绑定的部门已被删除，请核对后操作"));
+
+        RoleInfoVo roleInfoVo = new RoleInfoVo();
+        roleInfoVo.setRoleId(roleId);
+        roleInfoVo.setRoleName(roleExist.getRoleName());
+        roleInfoVo.setDeptName(dept.getDeptName());
+        roleInfoVo.setDeptId(roleExist.getDeptId());
+
+
+        List<RoleMenu> roleMenuList = this.roleMenuRepository.findByRoleIdAndDeletedStatus(roleId, SysConstants.DELETE_STATUS_ZERO);
+
+        if (CollectionUtils.isEmpty(roleMenuList)) {
+
+            roleInfoVo.setAppMenuIds(Collections.emptySet());
+            roleInfoVo.setManagerMenuIds(Collections.emptySet());
+
+        } else {
+            Set<Integer> managerMenuIds = roleMenuList.stream().filter(e -> MenuIsManagerTypeEnum.MANAGER_MENU.getValue().equals(e.getIsManagerMenu())).map(RoleMenu::getMenuId).collect(Collectors.toSet());
+            Set<Integer> appMenuIds = roleMenuList.stream().filter(e -> MenuIsManagerTypeEnum.APP_MENU.getValue().equals(e.getIsManagerMenu())).map(RoleMenu::getMenuId).collect(Collectors.toSet());
+
+            roleInfoVo.setAppMenuIds(CollectionUtils.isEmpty(appMenuIds) ? Collections.emptySet() :appMenuIds);
+            roleInfoVo.setManagerMenuIds(CollectionUtils.isEmpty(managerMenuIds) ? Collections.emptySet() :managerMenuIds);
+
+        }
+
+        return roleInfoVo;
     }
 
     @Override

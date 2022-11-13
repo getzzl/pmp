@@ -6,6 +6,7 @@ import com.zk.common.result.ResultVo;
 import com.zk.common.util.PageUtil;
 import com.zk.common.vo.DeptRoleList;
 import com.zk.common.vo.PageVo;
+import com.zk.common.vo.RoleInfoVo;
 import com.zk.common.vo.RoleVo;
 import com.zk.service.system.RoleService;
 import lombok.extern.slf4j.Slf4j;
@@ -34,12 +35,6 @@ public class RoleController {
         return ResultVo.success(this.roleService.findAllByDeptIdAndKey(deptId, pageVo.getKeyword(), pageVo.getPage(), pageVo.getSize()));
     }
 
-//    @GetMapping("/getMenu")
-//    @LogOperation(opType = LogConstant.OPTYPE.SEARCH_LOG, summary = "新增时，获取菜单权限列表", method = MediaType.APPLICATION_JSON_VALUE)
-//    public ResultVo<Object> getMenu() {
-//        return ResultVo.success(roleService.getMenu());
-//    }
-
 
     @PostMapping("/editRoleInfo")
     @LogOperation(opType = LogConstant.OPTYPE.CREATE_LOG, summary = "编辑角色", method = MediaType.APPLICATION_JSON_VALUE)
@@ -57,9 +52,9 @@ public class RoleController {
     }
 
 
-    @GetMapping("/getMenuList/{roleId}")
-    @LogOperation(opType = LogConstant.OPTYPE.SEARCH_LOG, summary = "角色详情--获取菜单权限信息", method = MediaType.APPLICATION_JSON_VALUE)
-    public ResultVo<Object> getMenuList(@PathVariable Integer roleId) {
+    @GetMapping("/getRoleInfo/{roleId}")
+    @LogOperation(opType = LogConstant.OPTYPE.SEARCH_LOG, summary = "角色详情", method = MediaType.APPLICATION_JSON_VALUE)
+    public ResultVo<RoleInfoVo> getRoleInfo(@PathVariable Integer roleId) {
         //todo 这里返回的是树形结构{menuId,isManagerMenu,menuName,children<List>} 还是 list 集合 包含了{ menuId,menuName,parentMenuId,isManagerMenu}
         return ResultVo.success(roleService.getMenuList(roleId));
     }
