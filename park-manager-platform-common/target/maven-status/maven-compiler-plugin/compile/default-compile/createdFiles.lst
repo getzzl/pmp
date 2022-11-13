@@ -1,0 +1,10 @@
+com\zk\common\domain\system\PmpMenu.class
+com\zk\common\domain\system\PmpUser.class
+com\zk\common\domain\system\PmpUserRole.class
+com\zk\common\domain\system\PmpDept$PmpDeptBuilder.class
+com\zk\common\domain\system\PmpDept.class
+com\zk\common\domain\system\PmpUserRole$PmpUserRoleBuilder.class
+com\zk\common\domain\system\PmpRole.class
+com\zk\common\domain\system\PmpUser$PmpUserBuilder.class
+com\zk\common\domain\system\PmpMenu$PmpMenuBuilder.class
+com\zk\common\domain\system\PmpRole$PmpRoleBuilder.class
