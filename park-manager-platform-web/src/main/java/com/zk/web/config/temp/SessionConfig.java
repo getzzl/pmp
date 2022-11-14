@@ -2,7 +2,6 @@ package com.zk.web.config.temp;
 
 
 import com.zk.common.domain.system.User;
-import com.zk.common.dto.UserDto;
 import com.zk.common.util.EncryptUtils;
 import lombok.Getter;
 import org.slf4j.Logger;

@@ -4,7 +4,7 @@ import com.zk.common.anataion.LogOperation;
 import com.zk.common.constant.LogConstant;
 import com.zk.common.domain.system.Menu;
 import com.zk.common.domain.system.User;
-import com.zk.common.dto.UserDto;
+import com.zk.common.vo.UserMangerInfo;
 import com.zk.common.result.ResultVo;
 import com.zk.common.util.PageUtil;
 import com.zk.common.vo.*;
@@ -62,9 +62,6 @@ public class UserController {
 
 
 
-
-
-
     @LogOperation(opType = LogConstant.OPTYPE.SEARCH_LOG, summary = "获取当前用户菜单列表", method = MediaType.APPLICATION_JSON_VALUE)
     @GetMapping("/getUserMenus")
     public ResultVo<List<Menu>> getUserMenus() {
@@ -75,7 +72,7 @@ public class UserController {
 
     @LogOperation(opType = LogConstant.OPTYPE.SEARCH_LOG, summary = "获取当前用户", method = MediaType.APPLICATION_JSON_VALUE)
     @GetMapping("/getUserInfo")
-    public ResultVo<UserInfo> getUserInfo() {
+    public ResultVo<UserMangerInfo> getUserInfo() {
         User user = this.sessionConfig.getSessionUser();
         return ResultVo.success(this.userService.getUserInfo(user));
     }
@@ -114,15 +111,7 @@ public class UserController {
     }
 
 
-    @LogOperation(opType = LogConstant.OPTYPE.SEARCH_LOG, summary = "获取用户信息", method = MediaType.APPLICATION_JSON_VALUE)
-    @GetMapping("/find/{userId}")
-    public ResultVo<UserInfo> findById(@PathVariable Integer userId) {
-        UserInfo user = userService.findById(userId);
-        if (user == null) {
-            return ResultVo.fail("获取失败");
-        }
-        return ResultVo.success(user, "获取成功");
-    }
+
 
 
 }

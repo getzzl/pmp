@@ -36,6 +36,7 @@ public class MenuController {
 
     @LogOperation(opType = LogConstant.OPTYPE.SEARCH_LOG, summary = "根据后端管理的菜单树", method = MediaType.APPLICATION_JSON_VALUE)
     @GetMapping("/getAllManagerMenuList")
+    @RequiresPermissions("system.menu.getAll")
     public ResultVo<List<MenuListVo>> getAllManageMenuList(Integer menuId) {
         return ResultVo.success(this.menuService.getAllMenuList(menuId, MenuIsManagerTypeEnum.MANAGER_MENU.getValue()));
     }

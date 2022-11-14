@@ -4,7 +4,7 @@ import com.zk.common.constant.MenuIsManagerTypeEnum;
 import com.zk.common.constant.RedisConstants;
 import com.zk.common.constant.SysConstants;
 import com.zk.common.domain.system.*;
-import com.zk.common.dto.UserDto;
+import com.zk.common.vo.UserMangerInfo;
 import com.zk.common.util.EncryptUtils;
 import com.zk.common.vo.*;
 import com.zk.db.system.*;
@@ -73,23 +73,9 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserInfo getUserInfo(User user) {
+    public UserMangerInfo getUserInfo(User user) {
+        return findUserDtoByUserId(user.getUserId());
 
-
-        UserInfo userInfo = new UserInfo();
-
-        UserDto userDto = findUserDtoByUserId(user.getUserId());
-        BeanUtils.copyProperties(userDto, userInfo);
-
-        List<UserDto.UserRoleDto> roles = userDto.getRoles();
-        if (!CollectionUtils.isEmpty(roles)) {
-//            List<UserDto.RoleMenuDto> menuList = roles.stream().map(UserDto.UserRoleDto::getRoleMenuDtos).flatMap(List::stream).filter(e -> MenuIsManagerTypeEnum.MANAGER_MENU.getValue().equals(e.getIsManagerMenu())).collect(Collectors.toList());
-
-
-        }
-
-
-        return null;
     }
 
 
@@ -118,30 +104,27 @@ public class UserServiceImpl implements UserService {
         return null;
     }
 
-    @Override
-    public UserInfo findById(Integer userId) {
-        return null;
-    }
+
 
     @Override
-    public UserDto findUserDtoByUserId(Integer userId) {
+    public UserMangerInfo findUserDtoByUserId(Integer userId) {
 
         Object redisResult = this.redisTemplate.opsForValue().get(RedisConstants.USER_ROLE_MENU_KEY + userId);
 
 
         if (redisResult == null) {
             log.info("数据库 查询对应的权限信息....");
-            UserDto userDto = new UserDto();
+            UserMangerInfo userMangerInfo = new UserMangerInfo();
             Optional<User> user = userRepository.findByUserIdAndDeletedStatus(userId, SysConstants.DELETE_STATUS_ZERO);
 
             user.orElseThrow(() -> new RuntimeException("未找到对应的用户"));
             User user1 = user.get();
-            userDto.setUserName(user1.getUserName());
-            userDto.setUserId(userId);
+            userMangerInfo.setUserName(user1.getUserName());
+            userMangerInfo.setUserId(userId);
 
 
-            List<UserDto.UserRoleDto> roles = new ArrayList<>();
-            List<UserDto.RoleMenuDto> roleMenuDtos = new ArrayList<>();
+            Set<UserMangerInfo.UserRoleDto> roles = new HashSet<>();
+            Set<UserMangerInfo.RoleMenuDto> roleMenuDtos = new HashSet<>();
 
 
             List<UserRole> userRoles = this.userRoleRepository.findByUserIdAndDeletedStatus(userId, SysConstants.DELETE_STATUS_ZERO);
@@ -149,7 +132,7 @@ public class UserServiceImpl implements UserService {
 
                 roles = userRoles.stream().map(e -> {
 
-                    UserDto.UserRoleDto userRoleDto = new UserDto.UserRoleDto();
+                    UserMangerInfo.UserRoleDto userRoleDto = new UserMangerInfo.UserRoleDto();
                     userRoleDto.setRoleId(e.getRoleId());
 
                     //查询角色详情
@@ -184,13 +167,13 @@ public class UserServiceImpl implements UserService {
 //
 //                    }
                     return userRoleDto;
-                }).filter(Objects::nonNull).collect(Collectors.toList());
+                }).filter(Objects::nonNull).collect(Collectors.toSet());
             }
 
 
             if (!CollectionUtils.isEmpty(roles)) {
                 //给用户设置菜单权限
-                Set<Integer> roleIds = roles.stream().map(UserDto.UserRoleDto::getRoleId).collect(Collectors.toSet());
+                Set<Integer> roleIds = roles.stream().map(UserMangerInfo.UserRoleDto::getRoleId).collect(Collectors.toSet());
                 //角色菜单表
                 List<RoleMenu> roleMenuList = this.roleMenuRepository.findByRoleIdInAndDeletedStatus(roleIds, SysConstants.DELETE_STATUS_ZERO);
                 if (!CollectionUtils.isEmpty(roleMenuList)) {
@@ -205,7 +188,13 @@ public class UserServiceImpl implements UserService {
                         Set<Menu> parentMenu = menuList.stream().filter(menu -> SysConstants.MENU_PARENT_ID.equals(menu.getParentId())).collect(Collectors.toSet());
 
                         //递归调用
-
+                        roleMenuDtos = parentMenu.stream().map(e -> {
+                            UserMangerInfo.RoleMenuDto roleMenuDto = new UserMangerInfo.RoleMenuDto();
+                            BeanUtils.copyProperties(e, roleMenuDto);
+                            Set<UserMangerInfo.RoleMenuDto> childMenuByParentMenu = getChildMenuByParentMenu(e, new HashSet<>(menuList));
+                            roleMenuDto.setChild(childMenuByParentMenu);
+                            return roleMenuDto;
+                        }).collect(Collectors.toSet());
 
                     }
 
@@ -214,27 +203,35 @@ public class UserServiceImpl implements UserService {
             }
 
 
-            userDto.setRoles(roles);
-            userDto.setRoleMenuDtos(roleMenuDtos);
+            userMangerInfo.setUserRoleDtos(roles);
+            userMangerInfo.setRoleMenuDtos(roleMenuDtos);
 
-            redisTemplate.opsForValue().set(RedisConstants.USER_ROLE_MENU_KEY + userId, userDto);
+            redisTemplate.opsForValue().set(RedisConstants.USER_ROLE_MENU_KEY + userId, userMangerInfo);
 
-            return userDto;
+            return userMangerInfo;
         } else {
-            return (UserDto) redisResult;
+            return (UserMangerInfo) redisResult;
         }
     }
 
 
-    private Set<Menu> getChildMenuByParentMenu(Menu parent, Set<Menu> allMenu) {
-        Set<Menu> child = new HashSet<>();
+    private Set<UserMangerInfo.RoleMenuDto> getChildMenuByParentMenu(Menu parent, Set<Menu> allMenu) {
+        Set<UserMangerInfo.RoleMenuDto> child = new HashSet<>();
 
-//        allMenu.stream().filter(e -> {
-//
-//            e.getParentId()
-//
-//
-//        })
+
+        Set<Menu> childMenuTemp = allMenu.stream().filter(e -> parent.getMenuId().equals(e.getParentId())).collect(Collectors.toSet());
+
+        if (CollectionUtils.isEmpty(childMenuTemp)) {
+            return child;
+        }
+
+        child = childMenuTemp.stream().map(e -> {
+            UserMangerInfo.RoleMenuDto roleMenuDto = new UserMangerInfo.RoleMenuDto();
+            BeanUtils.copyProperties(e, roleMenuDto);
+            Set<UserMangerInfo.RoleMenuDto> childMenuByParentMenu = getChildMenuByParentMenu(e, allMenu);
+            roleMenuDto.setChild(childMenuByParentMenu);
+            return roleMenuDto;
+        }).collect(Collectors.toSet());
         return child;
     }
 

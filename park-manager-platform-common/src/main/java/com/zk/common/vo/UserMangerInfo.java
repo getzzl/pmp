@@ -1,10 +1,10 @@
-package com.zk.common.dto;
+package com.zk.common.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.util.Set;
 
 /**
  * @Author: zzl
@@ -13,7 +13,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserDto {
+public class UserMangerInfo {
 
     private Integer userId;
 
@@ -21,9 +21,9 @@ public class UserDto {
 
     private String account;
 
-    private List<UserRoleDto> roles;
+    private Set<UserRoleDto> userRoleDtos;
 
-    private List<RoleMenuDto> roleMenuDtos;
+    private Set<RoleMenuDto> roleMenuDtos;
 
 
     @Data
@@ -47,6 +47,6 @@ public class UserDto {
 
         private String menuCode;
 
-        private List<RoleMenuDto> child;
+        private Set<RoleMenuDto> child;
     }
 }

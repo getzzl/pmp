@@ -1,7 +1,7 @@
 package com.zk.web.config.temp;
 
 import com.zk.common.domain.system.User;
-import com.zk.common.dto.UserDto;
+import com.zk.common.vo.UserMangerInfo;
 import com.zk.service.system.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.shiro.authc.AuthenticationException;
@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.util.Optional;
+import java.util.Set;
 
 @Component
 @Slf4j
@@ -46,27 +47,32 @@ public class TokenRealm extends AuthorizingRealm {
         }
         User user = (User) session.get();
 
-        UserDto userDto = userService.findUserDtoByUserId(user.getUserId());
-        log.info("userDto : {}",userDto);
-        if (userDto == null) {
+        UserMangerInfo userMangerInfo = userService.findUserDtoByUserId(user.getUserId());
+        log.info("userDto : {}", userMangerInfo);
+        if (userMangerInfo == null) {
             return null;
         }
 
         SimpleAuthorizationInfo authorizationInfo = new SimpleAuthorizationInfo();
 
         log.info("给用户 设置权限 ..... user:{}", user);
-        if (!CollectionUtils.isEmpty(userDto.getRoles())) {
-            userDto.getRoles().forEach(r -> {
-
-//                if (!CollectionUtils.isEmpty(r.getRoleMenuDtos())) {
-//                    r.getRoleMenuDtos().forEach(m -> {
-//                        authorizationInfo.addStringPermission(m.getMenuCode());
-//                    });
-//                }
-            });
+        if (!CollectionUtils.isEmpty(userMangerInfo.getRoleMenuDtos())) {
+            setPermission(authorizationInfo, userMangerInfo.getRoleMenuDtos());
         }
 
         return authorizationInfo;
+    }
+
+
+    private void setPermission(SimpleAuthorizationInfo authorizationInfo, Set<UserMangerInfo.RoleMenuDto> roleMenuDtos) {
+        if (!CollectionUtils.isEmpty(roleMenuDtos)) {
+            roleMenuDtos.stream().forEach(e -> {
+                authorizationInfo.addStringPermission(e.getMenuCode());
+                if (!CollectionUtils.isEmpty(e.getChild())) {
+                    setPermission(authorizationInfo, e.getChild());
+                }
+            });
+        }
     }
 
     //认证接口

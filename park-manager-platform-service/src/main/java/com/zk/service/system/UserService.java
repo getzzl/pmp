@@ -2,7 +2,7 @@ package com.zk.service.system;
 
 import com.zk.common.domain.system.Menu;
 import com.zk.common.domain.system.User;
-import com.zk.common.dto.UserDto;
+import com.zk.common.vo.UserMangerInfo;
 import com.zk.common.vo.*;
 import org.springframework.data.domain.Page;
 
@@ -20,7 +20,7 @@ public interface UserService {
 
     List<Menu> getUserMenus();
 
-    UserInfo getUserInfo(User user);
+    UserMangerInfo getUserInfo(User user);
 
     List<User> findAllUser();
 
@@ -32,9 +32,8 @@ public interface UserService {
 
     User update(UserEditInfo user);
 
-    UserInfo findById(Integer userId);
 
-    UserDto findUserDtoByUserId(Integer userId);
+    UserMangerInfo findUserDtoByUserId(Integer userId);
 
     Page<ManagerUserList> findAllManagerUser(Integer page, Integer size, String keyword);
 
