@@ -4,10 +4,12 @@ import com.zk.common.anataion.LogOperation;
 import com.zk.common.constant.LogConstant;
 import com.zk.common.domain.system.Menu;
 import com.zk.common.domain.system.User;
+import com.zk.common.dto.UserDto;
 import com.zk.common.result.ResultVo;
 import com.zk.common.util.PageUtil;
 import com.zk.common.vo.*;
 import com.zk.service.system.UserService;
+import com.zk.web.config.temp.SessionConfig;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private SessionConfig sessionConfig;
 
 
     @LogOperation(opType = LogConstant.OPTYPE.SEARCH_LOG, summary = "分页查找后台用户列表", method = MediaType.APPLICATION_JSON_VALUE)
@@ -71,7 +76,8 @@ public class UserController {
     @LogOperation(opType = LogConstant.OPTYPE.SEARCH_LOG, summary = "获取当前用户", method = MediaType.APPLICATION_JSON_VALUE)
     @GetMapping("/getUserInfo")
     public ResultVo<UserInfo> getUserInfo() {
-        return ResultVo.success(this.userService.getUserInfo());
+        User user = this.sessionConfig.getSessionUser();
+        return ResultVo.success(this.userService.getUserInfo(user));
     }
 
     @GetMapping("/allNoPage")

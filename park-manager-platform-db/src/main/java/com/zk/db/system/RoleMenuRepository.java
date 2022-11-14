@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * @Author: zzl
@@ -15,5 +16,6 @@ import java.util.List;
 public interface RoleMenuRepository extends JpaRepository<RoleMenu,Integer> {
 
 
-    List<RoleMenu> findByRoleIdAndDeletedStatus(Integer userId,Integer deletedStatus);
+    List<RoleMenu> findByRoleIdAndDeletedStatus(Integer roleId,Integer deletedStatus);
+    List<RoleMenu> findByRoleIdInAndDeletedStatus(Set<Integer> roleIds, Integer deletedStatus);
 }

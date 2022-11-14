@@ -23,6 +23,8 @@ public class UserDto {
 
     private List<UserRoleDto> roles;
 
+    private List<RoleMenuDto> roleMenuDtos;
+
 
     @Data
     @AllArgsConstructor
@@ -33,8 +35,6 @@ public class UserDto {
         private Integer roleId;
 
         private String roleName;
-
-        private List<RoleMenuDto> roleMenuDtos;
     }
 
     @Data
@@ -47,6 +47,6 @@ public class UserDto {
 
         private String menuCode;
 
-        private Integer isManagerMenu;
+        private List<RoleMenuDto> child;
     }
 }

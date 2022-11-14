@@ -1,5 +1,6 @@
 package com.zk.service.system.impl;
 
+import com.zk.common.constant.MenuIsManagerTypeEnum;
 import com.zk.common.constant.RedisConstants;
 import com.zk.common.constant.SysConstants;
 import com.zk.common.domain.system.*;
@@ -55,6 +56,7 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
+
     @Override
     public Optional<User> getByUserName(String userName, Integer deletedStatus) {
         return userRepository.findByUserNameAndDeletedStatus(userName, deletedStatus);
@@ -71,9 +73,25 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserInfo getUserInfo() {
+    public UserInfo getUserInfo(User user) {
+
+
+        UserInfo userInfo = new UserInfo();
+
+        UserDto userDto = findUserDtoByUserId(user.getUserId());
+        BeanUtils.copyProperties(userDto, userInfo);
+
+        List<UserDto.UserRoleDto> roles = userDto.getRoles();
+        if (!CollectionUtils.isEmpty(roles)) {
+//            List<UserDto.RoleMenuDto> menuList = roles.stream().map(UserDto.UserRoleDto::getRoleMenuDtos).flatMap(List::stream).filter(e -> MenuIsManagerTypeEnum.MANAGER_MENU.getValue().equals(e.getIsManagerMenu())).collect(Collectors.toList());
+
+
+        }
+
+
         return null;
     }
+
 
     @Override
     public List<User> findAllUser() {
@@ -121,10 +139,15 @@ public class UserServiceImpl implements UserService {
             userDto.setUserName(user1.getUserName());
             userDto.setUserId(userId);
 
+
+            List<UserDto.UserRoleDto> roles = new ArrayList<>();
+            List<UserDto.RoleMenuDto> roleMenuDtos = new ArrayList<>();
+
+
             List<UserRole> userRoles = this.userRoleRepository.findByUserIdAndDeletedStatus(userId, SysConstants.DELETE_STATUS_ZERO);
             if (!CollectionUtils.isEmpty(userRoles)) {
 
-                List<UserDto.UserRoleDto> userRoleDtoList = userRoles.stream().map(e -> {
+                roles = userRoles.stream().map(e -> {
 
                     UserDto.UserRoleDto userRoleDto = new UserDto.UserRoleDto();
                     userRoleDto.setRoleId(e.getRoleId());
@@ -138,41 +161,83 @@ public class UserServiceImpl implements UserService {
                         return null;
                     }
 
-                    //每一个角色
-                    Set<Integer> menuIds = roleMenuRepository.findByRoleIdAndDeletedStatus(e.getRoleId(), SysConstants.DELETE_STATUS_ZERO).stream().map(RoleMenu::getMenuId).collect(Collectors.toSet());
-                    if (CollectionUtils.isEmpty(menuIds)) {
-                        log.info(" 该角色暂时没有对应的菜单权限 roleId:{}", e.getRoleId());
-                        userRoleDto.setRoleMenuDtos(new ArrayList<>());
-                    } else {
-                        List<Menu> menuList = menuRepository.findByMenuIdInAndDeletedStatus(menuIds, SysConstants.DELETE_STATUS_ZERO);
-                        if (CollectionUtils.isEmpty(menuList)) {
-                            log.info(" 该角色暂时没有对应的菜单权限 menuList roleId:{}", e.getRoleId());
-                            userRoleDto.setRoleMenuDtos(new ArrayList<>());
-                        } else {
-                            userRoleDto.setRoleMenuDtos(menuList.stream().map(menu -> {
-                                UserDto.RoleMenuDto roleMenuDto = new UserDto.RoleMenuDto();
-                                roleMenuDto.setMenuCode(menu.getMenuCode());
-                                roleMenuDto.setMenuName(menu.getMenuName());
-                                roleMenuDto.setMenuId(menu.getMenuId());
-                                roleMenuDto.setIsManagerMenu(menu.getIsManagerMenu());
-                                return roleMenuDto;
-                            }).collect(Collectors.toList()));
-                        }
-
-                    }
+//                    //每一个角色
+//                    Set<Integer> menuIds = roleMenuRepository.findByRoleIdAndDeletedStatus(e.getRoleId(), SysConstants.DELETE_STATUS_ZERO).stream().map(RoleMenu::getMenuId).collect(Collectors.toSet());
+//                    if (CollectionUtils.isEmpty(menuIds)) {
+//                        log.info(" 该角色暂时没有对应的菜单权限 roleId:{}", e.getRoleId());
+//                        userRoleDto.setRoleMenuDtos(new ArrayList<>());
+//                    } else {
+//                        List<Menu> menuList = menuRepository.findByMenuIdInAndDeletedStatus(menuIds, SysConstants.DELETE_STATUS_ZERO);
+//                        if (CollectionUtils.isEmpty(menuList)) {
+//                            log.info(" 该角色暂时没有对应的菜单权限 menuList roleId:{}", e.getRoleId());
+//                            userRoleDto.setRoleMenuDtos(new ArrayList<>());
+//                        } else {
+//                            userRoleDto.setRoleMenuDtos(menuList.stream().map(menu -> {
+//                                UserDto.RoleMenuDto roleMenuDto = new UserDto.RoleMenuDto();
+//                                roleMenuDto.setMenuCode(menu.getMenuCode());
+//                                roleMenuDto.setMenuName(menu.getMenuName());
+//                                roleMenuDto.setMenuId(menu.getMenuId());
+//                                roleMenuDto.setIsManagerMenu(menu.getIsManagerMenu());
+//                                return roleMenuDto;
+//                            }).collect(Collectors.toList()));
+//                        }
+//
+//                    }
                     return userRoleDto;
                 }).filter(Objects::nonNull).collect(Collectors.toList());
-
-                userDto.setRoles(userRoleDtoList);
-
-                redisTemplate.opsForValue().set(RedisConstants.USER_ROLE_MENU_KEY + userId, userDto);
-                return userDto;
             }
-            return null;
+
+
+            if (!CollectionUtils.isEmpty(roles)) {
+                //给用户设置菜单权限
+                Set<Integer> roleIds = roles.stream().map(UserDto.UserRoleDto::getRoleId).collect(Collectors.toSet());
+                //角色菜单表
+                List<RoleMenu> roleMenuList = this.roleMenuRepository.findByRoleIdInAndDeletedStatus(roleIds, SysConstants.DELETE_STATUS_ZERO);
+                if (!CollectionUtils.isEmpty(roleMenuList)) {
+                    Set<Integer> menuIds = roleMenuList.stream()
+                            .filter(e -> MenuIsManagerTypeEnum.MANAGER_MENU.getValue().equals(e.getIsManagerMenu()))
+                            .map(RoleMenu::getMenuId).collect(Collectors.toSet());
+
+
+                    List<Menu> menuList = menuRepository.findByMenuIdInAndDeletedStatus(menuIds, SysConstants.DELETE_STATUS_ZERO);
+                    if (!CollectionUtils.isEmpty(menuList)) {
+
+                        Set<Menu> parentMenu = menuList.stream().filter(menu -> SysConstants.MENU_PARENT_ID.equals(menu.getParentId())).collect(Collectors.toSet());
+
+                        //递归调用
+
+
+                    }
+
+                }
+
+            }
+
+
+            userDto.setRoles(roles);
+            userDto.setRoleMenuDtos(roleMenuDtos);
+
+            redisTemplate.opsForValue().set(RedisConstants.USER_ROLE_MENU_KEY + userId, userDto);
+
+            return userDto;
         } else {
             return (UserDto) redisResult;
         }
     }
+
+
+    private Set<Menu> getChildMenuByParentMenu(Menu parent, Set<Menu> allMenu) {
+        Set<Menu> child = new HashSet<>();
+
+//        allMenu.stream().filter(e -> {
+//
+//            e.getParentId()
+//
+//
+//        })
+        return child;
+    }
+
 
     @Override
     public Page<ManagerUserList> findAllManagerUser(Integer page, Integer size, String keyword) {

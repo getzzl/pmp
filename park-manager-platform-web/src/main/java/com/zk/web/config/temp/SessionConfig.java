@@ -72,17 +72,17 @@ public class SessionConfig {
         return this.getSession(token);
     }
 
-    public Optional<UserDto> getSessionUser(HttpServletRequest request) {
+    public Optional<User> getSessionUser(HttpServletRequest request) {
         String token = this.getToken(request);
         Optional<Object> session = this.getSession(token);
-        return session.map(o -> (UserDto) o);
+        return session.map(o -> (User) o);
     }
 
-    public UserDto getSessionUser() {
+    public User getSessionUser() {
         HttpServletRequest request = this.getRequest();
         String token = this.getToken(request);
         Optional<Object> session = this.getSession(token);
-        return (UserDto) session.orElse(null);
+        return (User) session.orElseThrow(() ->  new RuntimeException("未查询到对应的用户信息"));
     }
 
     public Optional<Object> getSession(String token) {

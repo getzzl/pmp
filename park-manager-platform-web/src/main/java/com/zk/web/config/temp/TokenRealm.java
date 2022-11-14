@@ -58,11 +58,11 @@ public class TokenRealm extends AuthorizingRealm {
         if (!CollectionUtils.isEmpty(userDto.getRoles())) {
             userDto.getRoles().forEach(r -> {
 
-                if (!CollectionUtils.isEmpty(r.getRoleMenuDtos())) {
-                    r.getRoleMenuDtos().forEach(m -> {
-                        authorizationInfo.addStringPermission(m.getMenuCode());
-                    });
-                }
+//                if (!CollectionUtils.isEmpty(r.getRoleMenuDtos())) {
+//                    r.getRoleMenuDtos().forEach(m -> {
+//                        authorizationInfo.addStringPermission(m.getMenuCode());
+//                    });
+//                }
             });
         }
 

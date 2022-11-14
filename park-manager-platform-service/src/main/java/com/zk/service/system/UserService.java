@@ -20,7 +20,7 @@ public interface UserService {
 
     List<Menu> getUserMenus();
 
-    UserInfo getUserInfo();
+    UserInfo getUserInfo(User user);
 
     List<User> findAllUser();
 

@@ -30,17 +30,21 @@ public class UserInfo {
     private List<UserDto.UserRoleDto> roles;
 
 
+    //菜单列表
+    private List<UserInfoMenu> menuList;
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
     @Builder
-    public static class UserInfoMenu{
+    public static class UserInfoMenu {
         private Integer menuId;
 
         private String menuCode;
 
         private String menuName;
 
+        private List<UserInfoMenu> child;
     }
 
 }
