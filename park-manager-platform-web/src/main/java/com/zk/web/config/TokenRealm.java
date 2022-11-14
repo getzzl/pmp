@@ -1,4 +1,4 @@
-package com.zk.web.config.temp;
+package com.zk.web.config;
 
 import com.zk.common.domain.system.User;
 import com.zk.common.vo.UserMangerInfo;

@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
+import java.util.Date;
 
 /**
  * @Author: zzl
@@ -28,5 +29,11 @@ public class UserRole {
     private Integer userId;
 
     private Integer deletedStatus;
+
+    private Integer managerUser;
+
+    private Date createTime;
+
+    private Date updateTime;
 
 }

@@ -3,10 +3,13 @@ package com.zk.service.system.impl;
 import com.zk.common.constant.MenuIsManagerTypeEnum;
 import com.zk.common.constant.RedisConstants;
 import com.zk.common.constant.SysConstants;
+import com.zk.common.constant.UserTypeEnum;
 import com.zk.common.domain.system.*;
-import com.zk.common.vo.UserMangerInfo;
 import com.zk.common.util.EncryptUtils;
-import com.zk.common.vo.*;
+import com.zk.common.vo.AppUserList;
+import com.zk.common.vo.ManagerUserList;
+import com.zk.common.vo.UserEditInfo;
+import com.zk.common.vo.UserMangerInfo;
 import com.zk.db.system.*;
 import com.zk.service.system.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -62,48 +66,12 @@ public class UserServiceImpl implements UserService {
         return userRepository.findByUserNameAndDeletedStatus(userName, deletedStatus);
     }
 
-    @Override
-    public Page<ManagerUserList> findAll(Integer page, Integer size, String nickName, Integer deptId) {
-        return null;
-    }
-
-    @Override
-    public List<Menu> getUserMenus() {
-        return null;
-    }
 
     @Override
     public UserMangerInfo getUserInfo(User user) {
         return findUserDtoByUserId(user.getUserId());
 
     }
-
-
-    @Override
-    public List<User> findAllUser() {
-        return null;
-    }
-
-    @Override
-    public User save(UserEditInfo user) {
-        return null;
-    }
-
-    @Override
-    public void updatePassword(UserPasswordVo userPasswordVo) {
-
-    }
-
-    @Override
-    public void deleteUser(Integer userId) {
-
-    }
-
-    @Override
-    public User update(UserEditInfo user) {
-        return null;
-    }
-
 
 
     @Override
@@ -115,13 +83,10 @@ public class UserServiceImpl implements UserService {
         if (redisResult == null) {
             log.info("数据库 查询对应的权限信息....");
             UserMangerInfo userMangerInfo = new UserMangerInfo();
-            Optional<User> user = userRepository.findByUserIdAndDeletedStatus(userId, SysConstants.DELETE_STATUS_ZERO);
-
-            user.orElseThrow(() -> new RuntimeException("未找到对应的用户"));
-            User user1 = user.get();
-            userMangerInfo.setUserName(user1.getUserName());
+            User userExist = userRepository.findByUserIdAndDeletedStatus(userId, SysConstants.DELETE_STATUS_ZERO).orElseThrow(() -> new RuntimeException("未找到对应的用户"));
+            userMangerInfo.setUserName(userExist.getUserName());
             userMangerInfo.setUserId(userId);
-
+            userMangerInfo.setPhone(userExist.getPhone());
 
             Set<UserMangerInfo.UserRoleDto> roles = new HashSet<>();
             Set<UserMangerInfo.RoleMenuDto> roleMenuDtos = new HashSet<>();
@@ -273,17 +238,14 @@ public class UserServiceImpl implements UserService {
             ArrayList<Predicate> arrayList = new ArrayList<>();
 
             if (!StringUtils.isEmpty(phone)) {
-                //构建条件 like --or
                 arrayList.add(build.equal(root.get("phone"), phone));
             }
 
             if (identityStatus != null) {
-                //构建条件 like --or
                 arrayList.add(build.equal(root.get("identityStatus"), identityStatus));
             }
 
             if (!StringUtils.isEmpty(userName)) {
-                //构建条件 like --or
                 arrayList.add(build.like(root.get("userName"), "%" + userName + "%"));
             }
 
@@ -303,6 +265,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public User editUser(UserEditInfo user) {
         Integer userId = user.getUserId();
         Integer userInsertId = user.getUserId();
@@ -310,6 +273,8 @@ public class UserServiceImpl implements UserService {
         if (CollectionUtils.isEmpty(roles)) {
             throw new RuntimeException("未给该用户分配相关的角色");
         }
+
+        User result;
 
         if (userId == null) {
 
@@ -321,9 +286,9 @@ public class UserServiceImpl implements UserService {
             }
 
             //add
-            User userBuild = User.builder().phone(user.getPhone()).userName(user.getUserName()).password(EncryptUtils.md5(user.getPassword())).deletedStatus(SysConstants.DELETE_STATUS_ZERO).build();
-            User userSave = this.userRepository.save(userBuild);
-            userInsertId = userSave.getUserId();
+            User userBuild = User.builder().phone(user.getPhone()).userName(user.getUserName()).createTime(new Date()).updateTime(new Date()).password(EncryptUtils.md5(user.getPassword())).deletedStatus(SysConstants.DELETE_STATUS_ZERO).build();
+            result = this.userRepository.save(userBuild);
+            userInsertId = result.getUserId();
         } else {
             //update
             User userExist = this.userRepository.findByUserIdAndDeletedStatus(userId, SysConstants.DELETE_STATUS_ZERO).orElseThrow(() -> new RuntimeException("未找到需要修改的用户信息，或者该用户已删除"));
@@ -337,14 +302,16 @@ public class UserServiceImpl implements UserService {
             }
 
             userExist.setUserName(user.getUserName());
-            userExist.setPassword(user.getPassword());
+            userExist.setPassword(EncryptUtils.md5(user.getPassword()));
+            userExist.setUpdateTime(new Date());
             userExist.setPhone(user.getPhone());
-            User userSave = this.userRepository.save(userExist);
+            result = this.userRepository.save(userExist);
 
             List<UserRole> userRoles = this.userRoleRepository.findByUserIdAndDeletedStatus(userId, SysConstants.DELETE_STATUS_ZERO);
             if (!CollectionUtils.isEmpty(userRoles)) {
                 List<UserRole> userRoleUpdate = userRoles.stream().map(userRole -> {
                     userRole.setDeletedStatus(SysConstants.DELETE_STATUS_ONE);
+                    userRole.setUpdateTime(new Date());
                     return userRole;
                 }).collect(Collectors.toList());
 
@@ -358,14 +325,21 @@ public class UserServiceImpl implements UserService {
         //app insert user-role
         if (!CollectionUtils.isEmpty(roles)) {
             List<UserRole> roleMenus = roles.stream().map(e -> {
-                return UserRole.builder().roleId(e).deletedStatus(SysConstants.DELETE_STATUS_ZERO).userId(userAndRoleId).build();
+                return UserRole.builder()
+                        .roleId(e)
+                        .deletedStatus(SysConstants.DELETE_STATUS_ZERO)
+                        .userId(userAndRoleId)
+                        .managerUser(UserTypeEnum.MANAGER_USER.getValue())
+                        .createTime(new Date())
+                        .updateTime(new Date())
+                        .build();
             }).collect(Collectors.toList());
 
             this.userRoleRepository.saveAll(roleMenus);
         }
 
 
-        return null;
+        return result;
     }
 
     @Override

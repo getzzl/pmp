@@ -16,21 +16,7 @@ import java.util.Optional;
 public interface UserService {
     Optional<User> getByUserName(String userName,Integer deletedStatus);
 
-    Page<ManagerUserList> findAll(Integer page, Integer size, String nickName, Integer deptId);
-
-    List<Menu> getUserMenus();
-
     UserMangerInfo getUserInfo(User user);
-
-    List<User> findAllUser();
-
-    User save(UserEditInfo user);
-
-    void updatePassword(UserPasswordVo userPasswordVo);
-
-    void deleteUser(Integer userId);
-
-    User update(UserEditInfo user);
 
 
     UserMangerInfo findUserDtoByUserId(Integer userId);

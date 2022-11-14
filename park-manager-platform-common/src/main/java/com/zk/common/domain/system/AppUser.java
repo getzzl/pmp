@@ -36,6 +36,8 @@ public class AppUser {
 
     private Integer deletedStatus;
 
+    private Integer identityStatus;
+
     private Date updateTime;
 
     private Date createTime;

@@ -1,10 +1,10 @@
-package com.zk.web.login;
+package com.zk.web.system;
 
 import com.zk.common.constant.SysConstants;
 import com.zk.common.domain.system.User;
 import com.zk.common.util.EncryptUtils;
 import com.zk.service.system.UserService;
-import com.zk.web.config.temp.SessionConfig;
+import com.zk.web.config.SessionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

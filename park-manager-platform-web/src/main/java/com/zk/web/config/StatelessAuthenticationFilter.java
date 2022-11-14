@@ -1,4 +1,4 @@
-package com.zk.web.config.temp;
+package com.zk.web.config;
 
 import org.apache.shiro.authc.AuthenticationException;
 import org.apache.shiro.web.filter.AccessControlFilter;

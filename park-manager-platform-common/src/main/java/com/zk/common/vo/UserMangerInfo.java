@@ -19,7 +19,7 @@ public class UserMangerInfo {
 
     private String userName;
 
-    private String account;
+    private String phone;
 
     private Set<UserRoleDto> userRoleDtos;
 

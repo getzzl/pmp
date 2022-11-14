@@ -6,12 +6,6 @@ import org.springframework.core.annotation.AliasFor;
 
 import java.lang.annotation.*;
 
-/**
- * @Author: cdj
- * @date: 2021/6/24 9:07
- * @Description:
- */
-
 @Target({ElementType.METHOD, ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
